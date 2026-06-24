@@ -432,6 +432,62 @@ function getFallbackVerification(code: string): any {
     };
   }
 
+  // 7. Check subclassifier_consistency
+  if (normalized.includes("subclassifier_consistency")) {
+    const lines = code.split("\n");
+    const states = lines.map((lineContent, idx) => {
+      const lineNum = idx + 1;
+      const trimmed = lineContent.trim();
+      
+      let activeTactic: string | null = null;
+      let explanation = "";
+      let goalsBefore: string[] = [];
+      let goalsAfter: string[] = [];
+
+      if (trimmed.includes("theorem subclassifier_consistency")) {
+        explanation = "Declares the theorem checking if double negation (1 - (1 - q)) is consistent with q.";
+        goalsBefore = ["⊢ is_consistent q"];
+        goalsAfter = ["⊢ is_consistent q"];
+      } else if (trimmed.includes("dsimp")) {
+        activeTactic = "dsimp";
+        explanation = "Simplifies the goal by expanding the definitions of 'is_consistent' and 'convert', changing the goal to ¬¬q ↔ q.";
+        goalsBefore = ["⊢ is_consistent q"];
+        goalsAfter = ["⊢ ¬¬q ↔ q"];
+      } else if (trimmed.includes("cases hq")) {
+        activeTactic = "cases";
+        explanation = "Splits the proof into two classical cases: either q is true, or ¬q is true.";
+        goalsBefore = ["⊢ ¬¬q ↔ q"];
+        goalsAfter = ["h_true : q\n⊢ ¬¬q ↔ q", "h_false : ¬q\n⊢ ¬¬q ↔ q"];
+      } else if (trimmed.includes("exact False.elim")) {
+        activeTactic = "exact";
+        explanation = "Uses the principle of explosion (ex falso quodlibet) to close the contradictory branch.";
+        goalsBefore = ["f : False\n⊢ q"];
+        goalsAfter = [];
+      } else {
+        explanation = "Proof step.";
+        goalsBefore = ["⊢ ¬¬q ↔ q"];
+        goalsAfter = ["⊢ ¬¬q ↔ q"];
+      }
+
+      return {
+        line: lineNum,
+        code: lineContent,
+        activeTactic,
+        explanation,
+        goalsBefore,
+        goalsAfter
+      };
+    });
+
+    const hasExact = lines.some(l => l.includes("exact False.elim"));
+    return {
+      success: hasExact,
+      overallSummary: "Verifies the consistency of a boolean subobject classifier where conversion s = 1 - q acts as logical negation.",
+      errors: hasExact ? [] : [{ line: lines.length, message: "Unresolved logic branches remain.", severity: "error" }],
+      proofStates: states
+    };
+  }
+
   // General heuristic fallback for custom code
   const lines = code.split("\n");
   const states = lines.map((lineContent, idx) => {
@@ -624,6 +680,16 @@ function getFallbackSuggestion(code: string, currentLine: number): any {
     }
   }
 
+  if (normalized.includes("subclassifier_consistency")) {
+    if (!normalized.includes("dsimp")) {
+      return { suggestion: "dsimp [is_consistent, convert]", explanation: "Unfold the custom definitions to expose the underlying logical structure.", expectedGoalsAfter: ["⊢ ¬¬q ↔ q"] };
+    }
+    if (!normalized.includes("cases hq")) {
+      return { suggestion: "cases hq with\n  | inl h_true =>\n  | inr h_false =>", explanation: "Use the provided classical assumption to split the proof into true and false cases.", expectedGoalsAfter: [] };
+    }
+    return { suggestion: "exact False.elim f", explanation: "Close the contradictory goal state using False.elim after establishing a contradiction.", expectedGoalsAfter: [] };
+  }
+
   // General default suggestion
   return {
     suggestion: "rfl",
@@ -648,7 +714,8 @@ app.post("/api/verify", async (req, res) => {
                       normalized.includes("add_zero") ||
                       normalized.includes("Anomaly Resolution") ||
                       normalized.includes("cascadingResolve") ||
-                      normalized.includes("sectionsCohere");
+                      normalized.includes("sectionsCohere") ||
+                      normalized.includes("subclassifier_consistency");
 
   if (isChallenge) {
     const localResult = getFallbackVerification(code);
@@ -766,7 +833,8 @@ app.post("/api/suggest-step", async (req, res) => {
                       normalized.includes("add_zero") ||
                       normalized.includes("Anomaly Resolution") ||
                       normalized.includes("cascadingResolve") ||
-                      normalized.includes("sectionsCohere");
+                      normalized.includes("sectionsCohere") ||
+                      normalized.includes("subclassifier_consistency");
 
   if (isChallenge) {
     const suggestionResult = getFallbackSuggestion(code, currentLine);

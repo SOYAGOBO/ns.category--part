@@ -326,6 +326,80 @@ theorem identical_sections_cohere {U : GeometricOpenSet}
 
 end CoherenceVerification`,
     tacticsTip: "To prove identical_sections_cohere, utilize 'simp [sectionsCohere]' which unfolds the definition of overlap-restricted sections, and simplifies equality of identical terms reflexively."
+  },
+  {
+    id: "topos_subclassifier",
+    title: "Topos Subclassifier Consistency",
+    category: "Topos Theory",
+    difficulty: "Intermediate",
+    description: "In topos theory, a subobject classifier acts as a truth value object. If we model a conversion 's = 1 - q' as logical negation 's = ¬q', verify that applying this conversion twice remains consistent (i.e., ¬¬q ↔ q) under classical assumptions (q ∨ ¬q).",
+    starterCode: `/-!
+# Topos Subclassifier Consistency
+
+We verify that a boolean subobject classifier remains 
+consistent when applying a conversion simulating s = 1 - q.
+Here, we model the conversion structurally as logical negation.
+-/
+
+def convert (q : Prop) : Prop := ¬q
+
+def is_consistent (q : Prop) : Prop := convert (convert q) ↔ q
+
+theorem subclassifier_consistency (q : Prop) (hq : q ∨ ¬q) : is_consistent q := by
+  dsimp [is_consistent, convert]
+  cases hq with
+  | inl h_true =>
+    -- Case where q is true
+    constructor
+    · intro _
+      exact h_true
+    · intro _
+      intro hnq
+      exact hnq h_true
+  | inr h_false =>
+    -- Case where q is false
+    constructor
+    · intro hnnq
+      -- TODO: derive False from hnnq (¬¬q) and h_false (¬q)
+      _
+    · intro hq
+      -- TODO: derive False from h_false (¬q) and hq (q)
+      _`,
+    solutionCode: `/-!
+# Topos Subclassifier Consistency
+
+We verify that a boolean subobject classifier remains 
+consistent when applying a conversion simulating s = 1 - q.
+Here, we model the conversion structurally as logical negation.
+-/
+
+def convert (q : Prop) : Prop := ¬q
+
+def is_consistent (q : Prop) : Prop := convert (convert q) ↔ q
+
+theorem subclassifier_consistency (q : Prop) (hq : q ∨ ¬q) : is_consistent q := by
+  dsimp [is_consistent, convert]
+  cases hq with
+  | inl h_true =>
+    -- Case where q is true
+    constructor
+    · intro _
+      exact h_true
+    · intro _
+      intro hnq
+      exact hnq h_true
+  | inr h_false =>
+    -- Case where q is false
+    constructor
+    · intro hnnq
+      -- Prove q from ¬¬q and ¬q
+      have f : False := hnnq h_false
+      exact False.elim f
+    · intro hq
+      -- Prove ¬¬q from q and ¬q
+      have f : False := h_false hq
+      exact False.elim f`,
+    tacticsTip: "Use 'dsimp' to unfold the definitions. Then use 'cases' on the classical assumption 'hq'. In the contradictory cases, derive False by applying the negation hypothesis, then use 'exact False.elim f' to close the goal."
   }
 ];
 
