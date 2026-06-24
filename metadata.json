@@ -1,0 +1,6 @@
+{
+  "name": "Lean 4 Interactive Proof Companion",
+  "description": "An interactive Lean 4 theorem prover workspace, proof checker, and tactics visualizer powered by Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
